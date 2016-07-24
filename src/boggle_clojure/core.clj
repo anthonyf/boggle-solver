@@ -88,7 +88,7 @@
 
 (defn add-word-to-dict
   "Adds a word (vector of symbols) to the dictionary.  The dictionary is
-  reprecented by a prefix trie."
+  represented by a prefix trie."
   [dict word]
   (assoc-in dict word (merge (get-in dict word)
                              {:word? true})))
@@ -125,9 +125,9 @@
   [board dict pos found-words letters-so-far visited]
   (let [letter (boggle-board-letter-at-pos board pos)
         possible-word (conj letters-so-far letter)]
-    (if-not (nil? (get dict letter))
+    (if-not (nil? (letter dict))
       (let [visited (conj visited pos)
-            dict (get dict letter)
+            dict (letter dict)
             found-words (if (:word? dict false)
                           (conj found-words possible-word)
                           found-words)]
