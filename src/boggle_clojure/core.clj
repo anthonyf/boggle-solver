@@ -6,6 +6,8 @@
 
 ;;; BOGGLE BOARD ;;;
 
+(def board-size 4)
+
 (def dice
   "The official boggle dice."
   '[[A  A  E  E  G  N]
@@ -27,30 +29,25 @@
 
 (defn make-boggle-board
   []
-  (mapv #(into [] %)
-        (partition 4 (mapv rand-nth (shuffle dice)))))
+  (mapv vec
+        (partition board-size
+                   (map rand-nth (shuffle dice)))))
 
 (defn boggle-board-indices
   "Return a vector of all [x y] indices on a boggle board."
   []
-  (reduce (fn [result x]
-            (reduce (fn [result y]
-                      (conj result [x y]))
-                    result
-                    (range 4)))
-          []
-          (range 4)))
+  (for [x (range board-size) y (range board-size)] [x y]))
 
 (defn boggle-board-letter-at-pos
   "Retrieve letter at given boggle board position."
   [board [x y]]
   ((board y) x))
 
-(defn print-boggle-board
+(defn print-boggle-board!
   [board]
-  (dotimes [x 4]
-    (dotimes [y 4]
-      (print (format "%3s" (boggle-board-letter-at-pos board [x y]))))
+  (dotimes [x board-size]
+    (dotimes [y board-size]
+      (printf "%3s" (boggle-board-letter-at-pos board [x y])))
     (println)))
 
 ;;; DICTIONARY ;;;
@@ -66,19 +63,17 @@
   "Replaces words containing adjacent Q and U with a single Qu. This will fix up
   the words to handle the Qu on the boggle dice."
   [word]
-  (loop [letter (first word)
-         left (rest word)
-         new-word []]
-    (if (nil? letter)
-      new-word
-      (if (and (= letter 'Q)
-               (= (first left) 'U))
-        (recur (first (rest left))
-               (rest (rest left))
-               (conj new-word 'Qu))
-        (recur (first left)
-               (rest left)
-               (conj new-word letter))))))
+  (:letters
+   (reduce (fn [{:keys [letters prev-letter]} letter]
+             [(conj letters letter)
+              letter]
+             {:letters (if (and (= 'U letter)
+                                (= prev-letter 'Q))
+                         (conj (pop letters) 'Qu)
+                         (conj letters letter))
+              :prev-letter letter})
+           {:letters [], :prev-letter nil}
+           word)))
 
 (defn load-words
   "Loads words.txt info a giant vector of words where each word a vector of
@@ -93,7 +88,7 @@
 
 (defn add-word-to-dict
   "Adds a word (vector of symbols) to the dictionary.  The dictionary is
-  reprecentded by a prefix trie."
+  reprecented by a prefix trie."
   [dict word]
   (assoc-in dict word (merge (get-in dict word)
                              {:word? true})))
@@ -114,9 +109,9 @@
             (let [nx (+ x offset-x)
                   ny (+ y offset-y)]
               (if (and (>= nx 0)
-                       (< nx 4)
+                       (< nx board-size)
                        (>= ny 0)
-                       (< ny 4)
+                       (< ny board-size)
                        (not (contains? visited [nx ny])))
                 (conj valid [nx ny])
                 valid)))
@@ -130,7 +125,7 @@
   [board dict pos found-words letters-so-far visited]
   (let [letter (boggle-board-letter-at-pos board pos)
         possible-word (conj letters-so-far letter)]
-    (if (not (nil? (get dict letter)))
+    (if-not (nil? (get dict letter))
       (let [visited (conj visited pos)
             dict (get dict letter)
             found-words (if (:word? dict false)
@@ -147,10 +142,10 @@
                 (boggle-board-possible-next-positions pos visited)))
       found-words)))
 
-(defn boggle-words
+(defn find-boggle-words
   "Find all boggle words for given boggle board."
   ([]
-   (boggle-words (make-boggle-board)))
+   (find-boggle-words (make-boggle-board)))
   ([board]
    (let [dict (make-dict)]
      (reduce (fn [found-words start-pos]
@@ -162,11 +157,11 @@
 (defn -main
   [& args]
   (let [board (make-boggle-board)
-        words (boggle-words board)]
+        words (find-boggle-words board)]
     (println "board:")
-    (print-boggle-board board)    
-    (println (format "\nwords found(%d):" (count words)))
-    (doseq [word words]
+    (print-boggle-board! board)
+    (printf "\nwords found(%d):\n" (count words))
+    (doseq [word (sort words)]
       (println (lower-case (apply str word))))))
 
 ;;; SAMPLE OUTPUT ;;;
